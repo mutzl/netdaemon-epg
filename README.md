@@ -14,12 +14,15 @@ epg:
     - "3sat"
 ```
 
-![image](https://user-images.githubusercontent.com/2855185/116299908-8b611980-a79e-11eb-963a-472091a30c05.png)
+![image](https://user-images.githubusercontent.com/2855185/116314245-23ff9580-a7af-11eb-9f68-b76f0982bc56.png)
 
-The sensors provide also attributes like `BeginTime` and `Duration`, which can be the basis for building a clientside progressbar for the current TV Show.
+The sensors provide also attributes like `BeginTime` and `Duration`, which can be the basis for building a clientside progressbar for the current TV show.
+Another attribute contains the title of the upcoming show.
 
-![image](https://user-images.githubusercontent.com/2855185/116300113-cbc09780-a79e-11eb-95db-a45faa44a006.png)
+![image](https://user-images.githubusercontent.com/2855185/116314350-442f5480-a7af-11eb-9817-7dffe1461738.png)
 
 ## Internals
 The integration reads the epg data for the current and the next day at startup and then once every day at 6:30am (to minimize the load on the 3rd party server).
+It's also possible to refresh the epg data manually by calling the service `netdaemon.epg_refreshepgdata`.
+
 Based on this data, it calculates what's currently on TV based on the (local) time of your homeassistant installation and updates the sensors `sensor.epg_XXX` whenever a new tv show starts according to this already downloaded data.
