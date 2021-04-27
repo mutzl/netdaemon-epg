@@ -20,3 +20,6 @@ The sensors provide also attributes like `BeginTime` and `Duration`, which can b
 
 ![image](https://user-images.githubusercontent.com/2855185/116300113-cbc09780-a79e-11eb-95db-a45faa44a006.png)
 
+## Internals
+The integration reads the epg data for the current day and the next day only at startup and then one every day at 6:30am.
+Based on this data, it calculates what's currently on TV based on the (local) time of your homeassistant installation.
