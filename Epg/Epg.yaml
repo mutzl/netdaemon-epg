@@ -1,0 +1,6 @@
+﻿epg:
+  class: Mutzl.Homeassistant.Epg
+  refreshrate_in_seconds: 10
+  sender:
+  - "ORF 1"
+  - "ORF 2"
