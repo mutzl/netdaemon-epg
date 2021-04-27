@@ -34,7 +34,7 @@ namespace Mutzl.Homeassistant
             app.RunEvery(TimeSpan.FromSeconds(refreshrate), GetCurrentShowAndSetSensor);
         }
 
-        private async Task RefreshGuideAsync()
+        public async Task RefreshGuideAsync()
         {
             try
             {
@@ -51,6 +51,7 @@ namespace Mutzl.Homeassistant
             var now = DateTime.Now;
             var sensorName = GetSensorName(sender);
             var currentShow = guide.Where(s => s.Start <= now).OrderByDescending(s => s.Start).FirstOrDefault();
+            var upcomingShow = guide.Where(s => s.Start > now).OrderBy(s => s.Start).FirstOrDefault();
 
             // Clear Sensor, if no current show found
             if (currentShow == null)
@@ -67,6 +68,7 @@ namespace Mutzl.Homeassistant
                     BeginTime = currentShow.Start.ToShortTimeString(),
                     Duration = currentShow.DurationInMinutes,
                     Genre = currentShow.Category,
+                    Upcoming = upcomingShow?.Title ?? string.Empty,
                 }, true);
 
                 app.Log($"new TV show {state?.EntityId} {state?.State} started at {state?.Attribute?["BeginTime"]}");
@@ -75,6 +77,7 @@ namespace Mutzl.Homeassistant
             }
 
             app.LogDebug($"{sender.Name}: seit {currentShow?.Start.ToShortTimeString()} {currentShow?.Title ?? "-"} {currentShow?.DurationInPercent:P1}");
+            app.LogDebug($"{sender.Name}: coming next: {upcomingShow?.Start.ToShortTimeString()} {upcomingShow?.Title ?? "-"} {upcomingShow?.DurationInMinutes} minutes");
         }
 
         private string GetSensorName(SenderItem sender)
