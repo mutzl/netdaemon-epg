@@ -14,3 +14,9 @@ epg:
     - "3sat"
 ```
 
+![image](https://user-images.githubusercontent.com/2855185/116299908-8b611980-a79e-11eb-963a-472091a30c05.png)
+
+The sensors provide also attributes like `BeginTime` and `Duration`, which can be the basis for building a clientside progressbar for the current TV Show.
+
+![image](https://user-images.githubusercontent.com/2855185/116300113-cbc09780-a79e-11eb-95db-a45faa44a006.png)
+
