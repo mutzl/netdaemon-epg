@@ -6,5 +6,6 @@ namespace Mutzl.Homeassistant
     public interface IEpgService
     {
         Task<IEnumerable<Show>> LoadShowsAsync(SenderItem sender);
+        Task<string> GetDescriptionAsMarkdown(int id);
     }
 }
