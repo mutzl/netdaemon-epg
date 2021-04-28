@@ -11,7 +11,7 @@ namespace Mutzl.Homeassistant
         private IEnumerable<Show> guide = Enumerable.Empty<Show>();
 
         private readonly NetDaemonRxApp app;
-        private readonly SenderItem sender;
+        public SenderItem Sender { get;  }
         private readonly IEpgService epgService;
         private readonly int refreshrate;
 
@@ -20,7 +20,7 @@ namespace Mutzl.Homeassistant
         public SenderGuide(NetDaemonRxApp app, SenderItem sender, IEpgService epgService, int refreshrate)
         {
             this.app = app;
-            this.sender = sender;
+            this.Sender = sender;
             this.epgService = epgService;
             this.refreshrate = refreshrate;
         }
@@ -38,7 +38,7 @@ namespace Mutzl.Homeassistant
         {
             try
             {
-                guide = await epgService.LoadShowsAsync(sender);
+                guide = await epgService.LoadShowsAsync(Sender);
             }
             catch (Exception ex)
             {
@@ -46,17 +46,23 @@ namespace Mutzl.Homeassistant
             }        
         }
 
+        public Show? GetCurrentShow(DateTime now) => guide.Where(s => s.Start <= now).OrderByDescending(s => s.Start).FirstOrDefault();
+        public Show? GetUpcomingShow(DateTime now) => guide.Where(s => s.Start > now).OrderBy(s => s.Start).FirstOrDefault();
+
+        public async Task<string> GetDescription(int id) => await epgService.GetDescriptionAsMarkdown(id);
+
         private void GetCurrentShowAndSetSensor()
         {
             var now = DateTime.Now;
-            var sensorName = GetSensorName(sender);
-            var currentShow = guide.Where(s => s.Start <= now).OrderByDescending(s => s.Start).FirstOrDefault();
-            var upcomingShow = guide.Where(s => s.Start > now).OrderBy(s => s.Start).FirstOrDefault();
+            var currentShow = GetCurrentShow(now);
+            var upcomingShow = GetUpcomingShow(now);
+
+            var sensorName = GetSensorName(Sender);
 
             // Clear Sensor, if no current show found
             if (currentShow == null)
             {
-                app.Log($"Cannot find current TV show for station {sender.Name}.");
+                app.Log($"Cannot find current TV show for station {Sender.Name}.");
                 app.SetState(sensorName, "");
                 return;
             }
@@ -65,6 +71,7 @@ namespace Mutzl.Homeassistant
             {
                 var state = app.SetState(sensorName, currentShow.Title ?? "", new
                 {
+                    Sender = Sender.Name,
                     BeginTime = currentShow.Start.ToShortTimeString(),
                     Duration = currentShow.DurationInMinutes,
                     Genre = currentShow.Category,
@@ -76,8 +83,8 @@ namespace Mutzl.Homeassistant
                 lastShow = currentShow;
             }
 
-            app.LogDebug($"{sender.Name}: seit {currentShow?.Start.ToShortTimeString()} {currentShow?.Title ?? "-"} {currentShow?.DurationInPercent:P1}");
-            app.LogDebug($"{sender.Name}: coming next: {upcomingShow?.Start.ToShortTimeString()} {upcomingShow?.Title ?? "-"} {upcomingShow?.DurationInMinutes} minutes");
+            app.LogDebug($"{Sender.Name}: seit {currentShow?.Start.ToShortTimeString()} {currentShow?.Title ?? "-"} {currentShow?.DurationInPercent:P1}");
+            app.LogDebug($"{Sender.Name}: coming next: {upcomingShow?.Start.ToShortTimeString()} {upcomingShow?.Title ?? "-"} {upcomingShow?.DurationInMinutes} minutes");
         }
 
         private string GetSensorName(SenderItem sender)

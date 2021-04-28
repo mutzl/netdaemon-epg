@@ -96,5 +96,34 @@ namespace Mutzl.Homeassistant
                 lastShow = show;
             }
         }
+
+        public async Task<string> GetDescriptionAsMarkdown(int id)
+        {
+            var response = await httpClient.GetAsync($"detail.php?broadcast_id={id}");
+            var html = await response.Content.ReadAsStringAsync();
+            
+            var match = Regex.Match(html, @"Zur&uuml;ck<\/a><BR\/><BR\/>(.*)<a href=""javascript:history\.back");
+            html = match.Groups[1].Value;
+            
+            match = Regex.Match(html, @"<span class=""tabtextbold"">(.*?) Uhr , (.*?) , (.*?) . <\/span><br\/>(.*?)., (.*?)<br\/><br\/>(.*?)<p>(.*?)<\/p>(.*?)<BR\/>");
+            var time = match.Groups[1].Value;
+            var sender = match.Groups[2].Value;
+            var title = match.Groups[3].Value;
+            var sub = match.Groups[4].Value;
+            var duration = match.Groups[5].Value;
+            var details= match.Groups[6].Value.Replace(" , ", "");
+            var text = match.Groups[7].Value;
+            var crew = match.Groups[8].Value.Replace(" , ", "");
+
+            html = $"{time} - {sender}\r\n### {title}\r\n{sub}, {duration}\r\n\r\n{text}\r\n\r\n{crew}\r\n\r\n{details}";
+
+            html = html.Replace("<br>", "\r\n", StringComparison.OrdinalIgnoreCase)
+                .Replace("<br/>", "\r\n", StringComparison.OrdinalIgnoreCase)
+                .Replace("<p>", "\r\n", StringComparison.OrdinalIgnoreCase)
+                .Replace("</p>", "\r\n", StringComparison.OrdinalIgnoreCase);
+
+            var result = Regex.Replace(html, @"<[^>]*>", string.Empty);
+            return result;
+        }
     }
 }
