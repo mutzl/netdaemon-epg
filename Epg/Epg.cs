@@ -3,6 +3,7 @@ using NetDaemon.Common.Reactive;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Mutzl.Homeassistant
@@ -10,41 +11,54 @@ namespace Mutzl.Homeassistant
     public class Epg : NetDaemonRxApp
     {
         private readonly int defaultRefreshrate = 30;
-        private List<SenderGuide> senderGuides = new List<SenderGuide>();
-        private IEpgService epgService;
-
+        private List<StationGuide> stationGuides = new List<StationGuide>();
 
         // Properties from yaml
         public int? RefreshrateInSeconds { get; set; }
-        public IEnumerable<string>? Sender { get; set; }
-
-        public Epg()
-        {
-            // if you want to use another data source, just implement your own IEpgService!
-            // just need to provide 2 public methods LoadShowsAsync and GetDescriptionAsMarkdown
-            epgService = new HoerzuEpgService(this);
-        }
+        public IEnumerable<DataProvider>? DataProviders { get; set; }
 
         public override async Task InitializeAsync()
         {
-            if (Sender == null)
+
+            if (DataProviders == null)
             {
-                LogError("No station configured for EPG.");
+                LogError("No EPG data providers configured.");
                 return;
             }
+            
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
 
-            foreach (var senderName in Sender)
+            foreach (var dataProvider in DataProviders)
             {
-                var sender = SenderItem.GetByName(senderName);
-                if (sender == null)
+                if (dataProvider.Fullname == null || dataProvider.Stations == null || !dataProvider.Stations.Any())
                 {
-                    Log($"Station {senderName} not found in List");
+                    LogError($"EPG data provider must contain a fullname.");
                     continue;
-                };
+                }
 
-                var senderGuide = new SenderGuide(this, sender, epgService, RefreshrateInSeconds ?? defaultRefreshrate);
-                senderGuides.Add(senderGuide);
-                await senderGuide.InitializeAsync();
+                if (dataProvider.Stations == null || !dataProvider.Stations.Any())
+                {
+                    LogError($"EPG data provider {dataProvider.Fullname} doesn't contain any stations.");
+                    continue;
+                }
+
+                var epgService = assembly?.CreateInstance(dataProvider.Fullname, 
+                    true, System.Reflection.BindingFlags.Default, binder: null, args: new object[] { this }, null, null) as IDataProviderService;
+
+                if (epgService == null)
+                {
+                    LogError($@"Could not create instance of EPG data provider ""{dataProvider.Fullname}"".");
+                    continue;
+                }
+
+                foreach (var station in dataProvider.Stations)
+                {
+                    var senderGuide = new StationGuide(this, station, epgService, RefreshrateInSeconds ?? defaultRefreshrate);
+                    stationGuides.Add(senderGuide);
+                    await senderGuide.InitializeAsync();
+
+                    Log($"{dataProvider.Fullname} - {station} initialized.");
+                }
             }
 
             Log(nameof(Epg) + " initialized");
@@ -61,7 +75,7 @@ namespace Mutzl.Homeassistant
         [HomeAssistantServiceCall]
         public async Task RefreshEpgData(dynamic data)
         {
-            foreach (var senderGuide in senderGuides)
+            foreach (var senderGuide in stationGuides)
             {
                 await senderGuide.RefreshGuideAsync();
             }
@@ -83,18 +97,42 @@ namespace Mutzl.Homeassistant
         [HomeAssistantServiceCall]
         public async Task GetDescription(dynamic data)
         {
-            var senderName = (string)data.sender;
+            var now = DateTime.Now;
 
-            var guide = senderGuides.SingleOrDefault(sg => sg.Sender.Name == senderName);
-            if (guide == null) return;
+            var entityId = (string)data.entity_id;
+            var regex = new Regex("sensor.epg_(.*?)_(.*)");
 
-            var currentShow = guide.GetCurrentShow(DateTime.Now);
-            if (currentShow == null || !currentShow.Id.HasValue) return; 
-            var description = await guide.GetDescription(currentShow.Id.Value);
+            var match = regex.Match(entityId);
 
-            var state = SetState("sensor.epg_desc", currentShow.Title ?? senderName, new { description = description }, true);
+            var dataProvider = match.Groups[1].Value;
+            var station = match.Groups[2].Value;
 
-            Log(nameof(Epg) + " description set");
+            if (dataProvider.IsNullOrEmpty() || station.IsNullOrEmpty())
+            {
+                LogError($"Cannot find data provider or station for {entityId}");
+                return;
+            }
+
+            var guide = stationGuides.SingleOrDefault(sg => sg.Station.ToSimple().Equals(station, StringComparison.InvariantCultureIgnoreCase) 
+                                                         && sg.EpgService.ProviderName.ToSimple().Equals(dataProvider));
+            if (guide == null)
+            {
+                LogError($"Could not find station guide for {station} with {dataProvider} data provider.");
+                return;
+            }
+
+            var currentShow = guide.GetCurrentShow(now);
+            if (currentShow == null || currentShow.Id == null)
+            {
+                LogError($"Could not find current tv show for {station} with {dataProvider} data provider.");
+                return;
+            }
+
+            var description = await guide.GetDescription(currentShow);
+            
+            var state = SetState("sensor.epg_desc", currentShow.Title ?? station, new { description = description }, true);
         }
+
+        
     }
 }

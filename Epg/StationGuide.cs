@@ -6,25 +6,25 @@ using System.Threading.Tasks;
 
 namespace Mutzl.Homeassistant
 {
-    public class SenderGuide
+    public class StationGuide
     {
         private IEnumerable<Show> guide = Enumerable.Empty<Show>();
 
         private readonly NetDaemonRxApp app;
-        public SenderItem Sender { get;  }
-        private readonly IEpgService epgService;
+        public string Station { get; }
+        public IDataProviderService EpgService { get; }
         private readonly int refreshrate;
 
         private Show? lastShow = null;
 
-        public SenderGuide(NetDaemonRxApp app, SenderItem sender, IEpgService epgService, int refreshrate)
+        public StationGuide(NetDaemonRxApp app, string station, IDataProviderService epgService, int refreshrate)
         {
             this.app = app;
-            this.Sender = sender;
-            this.epgService = epgService;
+            this.Station = station;
+            this.EpgService = epgService;
             this.refreshrate = refreshrate;
         }
-        
+
         public async Task InitializeAsync()
         {
             await RefreshGuideAsync();
@@ -38,18 +38,19 @@ namespace Mutzl.Homeassistant
         {
             try
             {
-                guide = await epgService.LoadShowsAsync(Sender);
+                guide = await EpgService.LoadShowsAsync(Station);
             }
             catch (Exception ex)
             {
                 app.LogError(ex, ex.Message);
-            }        
+            }
         }
 
         public Show? GetCurrentShow(DateTime now) => guide.Where(s => s.Start <= now).OrderByDescending(s => s.Start).FirstOrDefault();
+
         public Show? GetUpcomingShow(DateTime now) => guide.Where(s => s.Start > now).OrderBy(s => s.Start).FirstOrDefault();
 
-        public async Task<string> GetDescription(int id) => await epgService.GetDescriptionAsMarkdown(id);
+        public async Task<string> GetDescription(Show show) => await EpgService.GetDescriptionAsMarkdown(show);
 
         private void GetCurrentShowAndSetSensor()
         {
@@ -57,13 +58,13 @@ namespace Mutzl.Homeassistant
             var currentShow = GetCurrentShow(now);
             var upcomingShow = GetUpcomingShow(now);
 
-            var sensorName = GetSensorName(Sender);
+            var sensorName = GetSensorName(Station);
 
             // Clear Sensor, if no current show found
             if (currentShow == null)
             {
-                app.Log($"Cannot find current TV show for station {Sender.Name}.");
-                app.SetState(sensorName, "");
+                app.Log($"Cannot find current TV show for station {Station}.");
+                app.SetState(sensorName, "", new { });
                 return;
             }
 
@@ -71,11 +72,15 @@ namespace Mutzl.Homeassistant
             {
                 var state = app.SetState(sensorName, currentShow.Title ?? "", new
                 {
-                    Sender = Sender.Name,
+                    Station = Station,
+                    Title = currentShow.Title,
+                    Episode = currentShow.Episode,
                     BeginTime = currentShow.Start.ToShortTimeString(),
                     Duration = currentShow.DurationInMinutes,
                     Genre = currentShow.Category,
                     Upcoming = upcomingShow?.Title ?? string.Empty,
+                    DataProvider = EpgService.ProviderName,
+                    //Id = currentShow.Id,
                 }, true);
 
                 app.Log($"new TV show {state?.EntityId} {state?.State} started at {state?.Attribute?["BeginTime"]}");
@@ -83,21 +88,9 @@ namespace Mutzl.Homeassistant
                 lastShow = currentShow;
             }
 
-            app.LogDebug($"{Sender.Name}: seit {currentShow?.Start.ToShortTimeString()} {currentShow?.Title ?? "-"} {currentShow?.DurationInPercent:P1}");
-            app.LogDebug($"{Sender.Name}: coming next: {upcomingShow?.Start.ToShortTimeString()} {upcomingShow?.Title ?? "-"} {upcomingShow?.DurationInMinutes} minutes");
+            app.LogDebug($"{Station} [{EpgService.ProviderName}]: seit {currentShow?.Start.ToShortTimeString()} {currentShow?.Title ?? "-"} {currentShow?.DurationInPercent:P1}");
         }
 
-        private string GetSensorName(SenderItem sender)
-        {
-            var sensorName = sender.Name
-                .ToLower()
-                .Replace(" ", "")
-                .Replace(".", "")
-                .Replace("-", "")
-                .Replace("+", "plus")
-                ;
-
-            return $"sensor.epg_{sensorName}";
-        }
+        private string GetSensorName(string station) => $"sensor.epg_{EpgService.ProviderName.ToSimple()}_{station.ToSimple()}";
     }
 }

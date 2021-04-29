@@ -1,6 +1,15 @@
 ﻿epg:
   class: Mutzl.Homeassistant.Epg
   refreshrate_in_seconds: 10
-  sender:
-  - "ORF 1"
-  - "ORF 2"
+  data_providers:
+    - fullname: "Mutzl.Homeassistant.OrfDataProviderService"
+      stations:
+        - "ORF 1"
+        - "ORF 2"
+        - "ORF 3"
+    - fullname: "Mutzl.Homeassistant.HoerzuDataProviderService"
+      stations:
+        - "ORF 1"
+        - "ORF 2"
+        - "3sat"
+   
