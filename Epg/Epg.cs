@@ -92,7 +92,7 @@ namespace Mutzl.Homeassistant
         ///     action: call-service
         ///     service: netdaemon.epg_getdescription
         ///     service_data:
-        ///       sender: ORF 1
+        ///       entity_id: sensor.epg_hoerzu_orf2
         /// </example>
         [HomeAssistantServiceCall]
         public async Task GetDescription(dynamic data)
