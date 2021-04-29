@@ -127,7 +127,7 @@ namespace Mutzl.Homeassistant
         {
             if (show == null || show.Station.IsNullOrEmpty() || show.Id.IsNullOrEmpty())
             {
-                app.LogError("Not enough information to get description for show.");
+                app.Log("Not enough information to get description for show.");
                 return "Nicht verfügbar.";
             }
 

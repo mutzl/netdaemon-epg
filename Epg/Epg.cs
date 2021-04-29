@@ -12,6 +12,7 @@ namespace Mutzl.Homeassistant
     {
         private readonly int defaultRefreshrate = 30;
         private List<StationGuide> stationGuides = new List<StationGuide>();
+        private IDisposable? clearDescriptionScheduler;
 
         // Properties from yaml
         public int? RefreshrateInSeconds { get; set; }
@@ -25,7 +26,7 @@ namespace Mutzl.Homeassistant
                 LogError("No EPG data providers configured.");
                 return;
             }
-            
+
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
 
             foreach (var dataProvider in DataProviders)
@@ -42,7 +43,7 @@ namespace Mutzl.Homeassistant
                     continue;
                 }
 
-                var epgService = assembly?.CreateInstance(dataProvider.Fullname, 
+                var epgService = assembly?.CreateInstance(dataProvider.Fullname,
                     true, System.Reflection.BindingFlags.Default, binder: null, args: new object[] { this }, null, null) as IDataProviderService;
 
                 if (epgService == null)
@@ -113,7 +114,7 @@ namespace Mutzl.Homeassistant
                 return;
             }
 
-            var guide = stationGuides.SingleOrDefault(sg => sg.Station.ToSimple().Equals(station, StringComparison.InvariantCultureIgnoreCase) 
+            var guide = stationGuides.SingleOrDefault(sg => sg.Station.ToSimple().Equals(station, StringComparison.InvariantCultureIgnoreCase)
                                                          && sg.EpgService.ProviderName.ToSimple().Equals(dataProvider));
             if (guide == null)
             {
@@ -129,10 +130,32 @@ namespace Mutzl.Homeassistant
             }
 
             var description = await guide.GetDescription(currentShow);
-            
+
             var state = SetState("sensor.epg_desc", currentShow.Title ?? station, new { description = description }, true);
+
+            ClearDescriptionScheduler();
+            clearDescriptionScheduler = RunIn(TimeSpan.FromMinutes(2), () => ClearDescription(new { }));
         }
 
-        
+        [HomeAssistantServiceCall]
+        public void ClearDescription(dynamic data)
+        {
+            ClearDescriptionScheduler();
+            SetState("sensor.epg_desc", "-", new { });
+            Log("EPG description cleared.");
+        }
+
+        private void ClearDescriptionScheduler()
+        {
+            try
+            {
+                clearDescriptionScheduler?.Dispose();
+            }
+            catch
+            {
+            }
+            clearDescriptionScheduler = null;
+        }
+
     }
 }
