@@ -131,10 +131,9 @@ namespace Mutzl.Homeassistant
 
             var response = await httpClient.GetAsync($"{show.Station.ToSimple()}/{show.Id}/");
             var html = await response.Content.ReadAsStringAsync();
-            ;
-            var pattern1 = @"<div class=""main clear"">\s*?<div class=""starttime"">\s*?<h3 class="".*?"">(.*?)<\/h3>\s*?<p class=""genre"">(.*?)<\/p>\s*?<div class=""status"">\s*?(.*?)<\/div>.*?<div class=""broadcasttitle"">.*?<h2 class="".*?"">(.*?)<\/h2>\s*?<h3>(.*?)<\/h3>.*?<div class=""paragraph"">(.*?)<div class=""navigation""";
-            var pattern2 = @"<div class=""main clear"">\s*?<div class=""starttime"">\s*?<h3 class="".*?"">(.*?)<\/h3>\s*?<p class=""genre"">(.*?)<\/p>\s*?<div class=""status"">\s*?(.*?)<\/div>.*?<div class=""broadcasttitle"">.*?<h2 class="".*?"">(.*?)<\/h2>\s*?(?:<h3>(.*?)<\/h3>)?.*?<div class=""paragraph"">(.*?)<div class=""navigation""";
-            var regex = new Regex(pattern2, RegexOptions.Singleline);
+            
+            var pattern = @"<div class=""main clear"">\s*?<div class=""starttime"">\s*?<h3 class="".*?"">(.*?)<\/h3>\s*?<p class=""genre"">(.*?)<\/p>\s*?<div class=""status"">\s*?(.*?)<\/div>.*?<div class=""broadcasttitle"">.*?<h2 class="".*?"">(.*?)<\/h2>\s*?(?:<h3>(.*?)<\/h3>)?.*?<div class=""paragraph"">(.*?)<div class=""navigation""";
+            var regex = new Regex(pattern, RegexOptions.Singleline);
             var match = regex.Match(html);
 
             var time = match.Groups[1].Value;
