@@ -38,6 +38,8 @@ epg:
    
 ```
 
+For every station in every data provider you will find a sensor will be created with the following naming pattern: `sensor.epg_[dataprovider]_[station]`.
+
 ![image](https://user-images.githubusercontent.com/2855185/116915630-8d1e5780-ac4c-11eb-9cce-fa1033b60ba3.png)
 
 The sensors provide also attributes like `BeginTime` and `Duration`, which can be the basis for building a clientside progressbar for the current TV show.
@@ -55,6 +57,7 @@ recorder:
 ```
 
 Using a markdown card, you can get a nice visual representation of the current show - maybe within a popup of the [browser-mod](https://github.com/thomasloven/hass-browser_mod)
+
 ![image](https://user-images.githubusercontent.com/2855185/116916831-1eda9480-ac4e-11eb-9206-d021f9e3c780.png)
 
 
