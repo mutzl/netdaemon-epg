@@ -66,4 +66,6 @@ The integration reads the epg data for the current and the next day at startup a
 In case your data provider changes more often than once in a day, you can also configure more refresh times.
 It's also possible to refresh the epg data manually by calling the service `netdaemon.epg_refreshepgdata`.
 
-Based on this data, it calculates what's currently on TV based on the (local) time of your homeassistant installation and updates the sensors `sensor.epg_XXX` whenever a new tv show starts according to this already downloaded data.
+Based on this data, it calculates what's currently on TV using the current (local) time of your homeassistant installation and updates the sensors `sensor.epg_[dataprovider]_[station]` whenever a new tv show starts according to this already downloaded data. 
+
+The description of the TV show is only read from the data source whenever a current show changes. 
