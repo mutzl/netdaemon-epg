@@ -1,5 +1,4 @@
-﻿using NetDaemon.Common.Reactive;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -14,14 +13,13 @@ namespace Mutzl.Homeassistant
         private readonly string baseUri = "https://tv.orf.at/program/";
 
         private readonly HttpClient httpClient;
-        private readonly NetDaemonRxApp app;
+        private readonly AppLogger<OrfDataProviderService> logger;
 
         public string ProviderName => "ORF";
 
-        public OrfDataProviderService(NetDaemonRxApp app)
+        public OrfDataProviderService(AppLogger<OrfDataProviderService> logger)
         {
-            this.app = app;
-
+            this.logger = logger;
             httpClient = new HttpClient { BaseAddress = new Uri(baseUri) };
         }
 
@@ -38,7 +36,7 @@ namespace Mutzl.Homeassistant
 
             return shows;
         }
-        
+           
         private string? GetShortStationName(string station)
         {
             var shortStation = station
@@ -50,7 +48,7 @@ namespace Mutzl.Homeassistant
 
             if (!validStations.Contains(shortStation))
             {
-                app.LogError($"{station} is not a valid ORF station.");
+                logger.LogError($"{station} is not a valid ORF station.");
                 return null;
             }
             return shortStation;
@@ -102,13 +100,13 @@ namespace Mutzl.Homeassistant
                 }
 
 
-                app.Log($"Loaded {station} TV programm for {date:d}");
+                logger.Log($"Loaded {station} TV programm for {date:d}");
 
                 return shows;
             }
             catch (Exception ex)
             {
-                app.LogError(ex, $"Error loading {station} TV program for {date:d} with ORF data provider.");
+                logger.LogError(ex, $"Error loading {station} TV program for {date:d} with ORF data provider.");
                 return shows;
             }
         }
@@ -127,14 +125,16 @@ namespace Mutzl.Homeassistant
         {
             if (show == null || show.Station.IsNullOrEmpty() || show.Id.IsNullOrEmpty())
             {
-                app.Log("Not enough information to get description for show.");
+                logger.Log("Not enough information to get description for show.");
                 return "Nicht verfügbar.";
             }
 
             var response = await httpClient.GetAsync($"{show.Station.ToSimple()}/{show.Id}/");
             var html = await response.Content.ReadAsStringAsync();
-            
-            var regex = new Regex(@"<div class=""main clear"">\s*?<div class=""starttime"">\s*?<h3 class="".*?"">(.*?)<\/h3>\s*?<p class=""genre"">(.*?)<\/p>\s*?<div class=""status"">\s*?(.*?)<\/div>.*?<div class=""broadcasttitle"">.*?<h2 class="".*?"">(.*?)<\/h2>\s*?<h3>(.*?)<\/h3>.*?<div class=""paragraph"">(.*?)<div class=""navigation""", RegexOptions.Singleline);
+            ;
+            var pattern1 = @"<div class=""main clear"">\s*?<div class=""starttime"">\s*?<h3 class="".*?"">(.*?)<\/h3>\s*?<p class=""genre"">(.*?)<\/p>\s*?<div class=""status"">\s*?(.*?)<\/div>.*?<div class=""broadcasttitle"">.*?<h2 class="".*?"">(.*?)<\/h2>\s*?<h3>(.*?)<\/h3>.*?<div class=""paragraph"">(.*?)<div class=""navigation""";
+            var pattern2 = @"<div class=""main clear"">\s*?<div class=""starttime"">\s*?<h3 class="".*?"">(.*?)<\/h3>\s*?<p class=""genre"">(.*?)<\/p>\s*?<div class=""status"">\s*?(.*?)<\/div>.*?<div class=""broadcasttitle"">.*?<h2 class="".*?"">(.*?)<\/h2>\s*?(?:<h3>(.*?)<\/h3>)?.*?<div class=""paragraph"">(.*?)<div class=""navigation""";
+            var regex = new Regex(pattern2, RegexOptions.Singleline);
             var match = regex.Match(html);
 
             var time = match.Groups[1].Value;
