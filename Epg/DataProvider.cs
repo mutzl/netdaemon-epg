@@ -6,5 +6,7 @@ namespace Mutzl.Homeassistant
     {
         public string? Fullname { get; set; }
         public IEnumerable<string>? Stations { get; set; }
+
+        public IEnumerable<string>? RefreshTimes { get; set; }
     }
 }

@@ -1,5 +1,4 @@
-﻿using NetDaemon.Common.Reactive;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
@@ -13,16 +12,15 @@ namespace Mutzl.Homeassistant
         private readonly string baseUri = "https://www.hoerzu.de/text/tv-programm/";
 
         private readonly HttpClient httpClient;
-        private readonly NetDaemonRxApp app;
-
+        private readonly AppLogger<HoerzuDataProviderService> logger;
         private const int TODAY = 0;
         private const int TOMORROW = 1;
 
         public string ProviderName => "HörZu";
 
-        public HoerzuDataProviderService(NetDaemonRxApp app)
+        public HoerzuDataProviderService(AppLogger<HoerzuDataProviderService> logger)
         {
-            this.app = app;
+            this.logger = logger;
 
             httpClient = new HttpClient { BaseAddress = new Uri(baseUri) };
             httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd("Mozilla/5.0 (compatible)");
@@ -35,7 +33,7 @@ namespace Mutzl.Homeassistant
             var hoerzuStation = HoerzuStation.GetByName(station);
             if (hoerzuStation == null)
             {
-                app.LogError($"Could not find {station} for Hörzu data provider.");
+                logger.LogError($"Could not find {station} for Hörzu data provider.");
                 return shows;
             }
             shows.AddRange(await LoadShowsForADayAsync(hoerzuStation, TODAY));
@@ -90,14 +88,14 @@ namespace Mutzl.Homeassistant
                     shows.Add(show);
                 }
 
-                app.Log($"Loaded {station.Name} programm for {date}");
+                logger.Log($"Loaded {station.Name} programm for {date}");
 
                 return shows;
 
             }
             catch (Exception ex)
             {
-                app.LogError(ex, $"Error loading {station.Name} TV program for {(day == 0 ? "today" : "tomorrow")} with HörZu data provider.");
+                logger.LogError(ex, $"Error loading {station.Name} TV program for {(day == 0 ? "today" : "tomorrow")} with HörZu data provider.");
                 return shows;
             }
         }
