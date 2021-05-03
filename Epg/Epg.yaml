@@ -24,4 +24,7 @@
         - "ORF 1"
         - "ORF 2"
         - "ORF 3"
+    - fullname: "Mutzl.Homeassistant.SampleDataProviderService"
+      stations:
+        - "TV One"
    
